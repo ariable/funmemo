@@ -9,7 +9,7 @@ FunMemo 是一个基于 `funasr-api` 的会议纪要系统。
 - `funasr-api` 作为底层 ASR 服务，尽量不修改其现有实现
 - 保持 `funasr-api` 的 OpenAI 兼容定位不变
 - 新系统需要支持长任务、页面关闭后恢复、历史任务查看
-- 需要支持说话人姓名和部门修正
+- 需要支持说话人姓名和职务修正
 - 需要支持会议纪要生成、查看、编辑和下载
 
 建议架构：
@@ -178,13 +178,12 @@ funmemo/
 7. 保存 `transcript.raw.json`
 8. 更新 job 状态为 `transcript_ready`
 
-### 6.2 人名/部门修正流程
+### 6.2 人名/职务修正流程
 
 1. 前端读取 transcript
 2. 用户为 speaker 编辑：
 - 姓名
-- 部门
-- 职务（可选）
+- 职务
 3. 前端保存修正结果
 4. 后端生成 `transcript.annotated.json`
 5. 更新 `speaker_profiles`
@@ -282,8 +281,7 @@ funmemo/
 - `job_id`
 - `speaker_id`
 - `speaker_name`
-- `speaker_department`
-- `speaker_title`
+- `speaker_role`
 - `speaker_display`
 - `sort_order`
 - `created_at`
@@ -331,6 +329,137 @@ funmemo/
 - `message`
 - `payload_json`
 - `created_at`
+
+### 8.7 Prisma schema 草案
+
+建议第一版直接使用 Prisma 落地，模型可以收敛为：
+
+```prisma
+model Job {
+  id                String           @id @default(cuid())
+  title             String?
+  sourceFilename    String
+  status            JobStatus        @default(queued)
+  currentStep       JobStep          @default(upload)
+  errorMessage      String?
+  audioDurationSec  Float?
+  segmentCount      Int?
+  speakerCount      Int?
+  language          String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  completedAt       DateTime?
+  files             JobFile[]
+  speakerProfiles   SpeakerProfile[]
+  summaries         Summary[]
+  downloads         Download[]
+  events            JobEvent[]
+}
+
+model JobFile {
+  id         String   @id @default(cuid())
+  jobId      String
+  fileType   FileType
+  path       String
+  mimeType   String?
+  sizeBytes  Int?
+  createdAt  DateTime @default(now())
+  job        Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId, fileType])
+}
+
+model SpeakerProfile {
+  id            String   @id @default(cuid())
+  jobId         String
+  speakerId     String
+  speakerName   String?
+  speakerRole   String?
+  speakerDisplay String?
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  job           Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, speakerId])
+  @@index([jobId, sortOrder])
+}
+
+model Summary {
+  id              String        @id @default(cuid())
+  jobId           String
+  contentMarkdown String?
+  promptVersion   String?
+  customPrompt    String?
+  systemPrompt    String?
+  status          SummaryStatus @default(pending)
+  generatedAt     DateTime?
+  updatedAt       DateTime      @updatedAt
+  job             Job           @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId, status])
+}
+
+model Download {
+  id           String   @id @default(cuid())
+  jobId        String
+  downloadType String
+  filePath     String
+  clientIp     String?
+  userAgent    String?
+  createdAt    DateTime @default(now())
+  job          Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId, createdAt])
+}
+
+model JobEvent {
+  id          String   @id @default(cuid())
+  jobId       String
+  eventType   String
+  message     String?
+  payloadJson String?
+  createdAt   DateTime @default(now())
+  job         Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId, createdAt])
+}
+
+enum JobStatus {
+  queued
+  transcribing
+  transcript_ready
+  speaker_editing
+  summarizing
+  summary_ready
+  completed
+  failed
+}
+
+enum JobStep {
+  upload
+  transcription
+  annotation
+  summary
+  export
+}
+
+enum FileType {
+  source_audio
+  transcript_raw
+  transcript_annotated
+  summary_markdown
+  export_markdown
+  export_json
+}
+
+enum SummaryStatus {
+  pending
+  processing
+  ready
+  failed
+}
+```
 
 
 ## 9. 文件存储结构
@@ -387,11 +516,8 @@ storage/jobs/{jobId}/
 - 每个 segment 补充：
   - `speaker_id`
   - `speaker_name`
-  - `speaker_department`
-  - `speaker_title`
+- `speaker_role`
   - `speaker_display`
-
-不建议继续只保留 `speaker_role`，因为“部门”和“角色”语义不同。
 
 
 ## 11. API 设计
@@ -460,8 +586,7 @@ storage/jobs/{jobId}/
     {
       "speaker_id": "说话人1",
       "speaker_name": "张三",
-      "speaker_department": "产品部",
-      "speaker_title": "产品经理"
+      "speaker_role": "产品经理"
     }
   ]
 }
@@ -516,6 +641,73 @@ storage/jobs/{jobId}/
 - `annotated-json`
 
 每次下载写入 `downloads` 表。
+
+### 11.10 TypeScript 类型草案
+
+建议前后端共享一套基础类型：
+
+```ts
+export type JobStatus =
+  | "queued"
+  | "transcribing"
+  | "transcript_ready"
+  | "speaker_editing"
+  | "summarizing"
+  | "summary_ready"
+  | "completed"
+  | "failed";
+
+export type JobStep =
+  | "upload"
+  | "transcription"
+  | "annotation"
+  | "summary"
+  | "export";
+
+export interface SpeakerProfileDTO {
+  speaker_id: string;
+  speaker_name?: string;
+  speaker_role?: string;
+  speaker_display?: string;
+  sort_order?: number;
+}
+
+export interface TranscriptSegmentDTO {
+  id: number | string;
+  start: number;
+  end: number;
+  text: string;
+  speaker?: string;
+  speaker_id?: string;
+  speaker_name?: string;
+  speaker_role?: string;
+  speaker_display?: string;
+}
+
+export interface TranscriptDTO {
+  text: string;
+  language?: string;
+  duration?: number;
+  segments: TranscriptSegmentDTO[];
+  words?: Array<Record<string, unknown>>;
+  speaker_profiles?: SpeakerProfileDTO[];
+}
+
+export interface JobDetailDTO {
+  id: string;
+  title?: string;
+  source_filename: string;
+  status: JobStatus;
+  current_step: JobStep;
+  audio_duration_sec?: number;
+  segment_count?: number;
+  speaker_count?: number;
+  language?: string;
+  created_at: string;
+  updated_at: string;
+  completed_at?: string;
+}
+```
 
 
 ## 12. 前端页面设计
@@ -576,12 +768,31 @@ storage/jobs/{jobId}/
 - 中间为 transcript/summary 主内容
 - 右侧为属性和操作面板
 
+视觉方向建议：
+
+- 整体保持简洁现代，不做传统后台的密集表格堆砌
+- 主色调使用中性色 + 单一高亮色，建议 `slate/stone + cyan` 或 `zinc + blue`
+- 页面使用大留白、卡片分组、柔和阴影和浅渐变背景，避免纯白平铺
+- 关键状态通过进度条、stepper、badge 和时间线可视化，而不是只靠文字
+- speaker 使用头像首字母块、角色标签、颜色分组，提升可读性
+- transcript 时间线和 summary 卡片要有明确层级，弱化边框、强化间距
+- 移动端优先折叠右侧属性栏，桌面端使用三栏工作台布局
+- 动效只保留必要部分，如上传完成、任务状态切换、保存成功提示
+
+建议首页与详情页的视觉重点：
+
+- 首页突出上传入口、最近任务和处理状态，第一屏就能开始新任务
+- 任务详情页突出“当前进度 + 说话人信息 + transcript 时间线”三块核心内容
+- Summary 页突出结论、待办、负责人等结构化模块，而不是单纯大段 markdown
+
 建议重点优化：
 
 - 上传成功后立即进入任务详情
 - transcript 编辑时自动保存或显式保存
 - 状态切换明确
 - 页面刷新后可恢复
+- 首屏在 1-2 秒内让用户看清当前任务处于哪一步
+- 所有核心操作保持单击可达，避免多层弹窗和深层菜单
 
 
 ## 14. Worker 设计
@@ -643,9 +854,9 @@ storage/jobs/{jobId}/
 格式建议：
 
 ```text
-张三（产品部，产品经理）：我们先确认这周上线目标。
+张三（产品经理）：我们先确认这周上线目标。
 
-李四（研发部，后端负责人）：接口改动需要两天。
+李四（后端负责人）：接口改动需要两天。
 ```
 
 若缺少姓名，则降级为：
