@@ -6,10 +6,10 @@ import { prisma } from "@/lib/prisma";
 import { saveAppConfig } from "@/lib/server/config";
 import { transcribeWithFunAsr } from "@/lib/server/funasr";
 import { getJobDetail, upsertSummary } from "@/lib/server/jobs";
-import { ensureJobDirectories, fileSize, removeJobDirectory, writeJobFile } from "@/lib/server/storage";
+import { ensureJobDirectories, fileSize, getMaxUploadBytes, removeJobDirectory, writeJobFile, writeJobFileStream } from "@/lib/server/storage";
 import { generateMeetingSummary } from "@/lib/server/summary";
 import { applySpeakerProfiles } from "@/lib/server/transcript";
-import type { SpeakerProfileInput } from "@/lib/types";
+import type { SpeakerProfileInput, SummaryOutputFormat } from "@/lib/types";
 
 export async function saveSettingsAction(
   _previousState: { success?: boolean; error?: string } | undefined,
@@ -46,6 +46,10 @@ export async function uploadJobAction(
     return { error: "请上传音频文件。" };
   }
 
+  if (file.size > getMaxUploadBytes()) {
+    return { error: `文件大小超过限制（最大 ${Math.round(getMaxUploadBytes() / 1024 / 1024 / 1024)} GB）` };
+  }
+
   const title = typeof titleInput === "string" ? titleInput.trim() : "";
   const meetingAtRaw = typeof meetingAtInput === "string" ? meetingAtInput.trim() : "";
   const meetingAt = meetingAtRaw ? new Date(meetingAtRaw) : null;
@@ -63,10 +67,10 @@ export async function uploadJobAction(
 
   try {
     await ensureJobDirectories(job.id);
-    const sourcePath = await writeJobFile(
+    const sourcePath = await writeJobFileStream(
       job.id,
       path.join("source", sourceFilename),
-      Buffer.from(await file.arrayBuffer()),
+      file,
     );
 
     await prisma.jobFile.create({
@@ -200,7 +204,7 @@ export async function saveSpeakersAction(jobId: string, speakerProfiles: Speaker
   revalidatePath(`/jobs/${jobId}`);
 }
 
-export async function generateSummaryAction(jobId: string) {
+export async function generateSummaryAction(jobId: string, format: SummaryOutputFormat = "markdown") {
   const job = await getJobDetail(jobId);
   if (!job || !job.transcript) {
     throw new Error("任务或 transcript 不存在");
@@ -215,9 +219,18 @@ export async function generateSummaryAction(jobId: string) {
   });
 
   try {
-    const contentMarkdown = await generateMeetingSummary(job.transcript);
-    await upsertSummary(jobId, contentMarkdown);
-    await writeJobFile(jobId, "summary/summary.md", contentMarkdown);
+    const result = await generateMeetingSummary(job.transcript, format);
+
+    const upsertOptions = result.format === "json"
+      ? { contentJson: JSON.stringify(result.structured), outputFormat: result.format }
+      : { outputFormat: result.format };
+
+    await upsertSummary(jobId, result.markdown, upsertOptions);
+    await writeJobFile(jobId, "summary/summary.md", result.markdown);
+
+    if (result.format === "json") {
+      await writeJobFile(jobId, "summary/summary.json", JSON.stringify(result.structured, null, 2));
+    }
 
     await prisma.job.update({
       where: { id: jobId },

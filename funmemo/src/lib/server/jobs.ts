@@ -1,5 +1,5 @@
 import type { Job, SpeakerProfile, Summary } from "@prisma/client";
-import type { JobCard, JobDetail, JobStatus, Transcript } from "@/lib/types";
+import type { JobCard, JobDetail, JobStatus, StructuredSummary, SummaryOutputFormat, Transcript } from "@/lib/types";
 import { prisma } from "@/lib/prisma";
 import { readJobJson } from "@/lib/server/storage";
 
@@ -133,39 +133,55 @@ export async function getJobDetail(jobId: string): Promise<JobDetail | null> {
     transcript.speakerProfiles = mapSpeakerProfiles(job.speakerProfiles);
   }
 
-  const summaryMarkdown: string | null = job.summaries[0]?.contentMarkdown ?? null;
+  const latestSummaryRecord = job.summaries[0] ?? null;
+  const summaryMarkdown: string | null = latestSummaryRecord?.contentMarkdown ?? null;
+  const summaryFormat = (latestSummaryRecord?.outputFormat as SummaryOutputFormat) ?? null;
+
+  let summaryJson: StructuredSummary | null = null;
+  if (latestSummaryRecord?.contentJson) {
+    try {
+      summaryJson = JSON.parse(latestSummaryRecord.contentJson) as StructuredSummary;
+    } catch {
+      summaryJson = null;
+    }
+  }
 
   return {
     ...toJobCard(job),
     transcript,
     summaryMarkdown,
+    summaryJson,
+    summaryFormat,
   };
 }
 
-export async function upsertSummary(jobId: string, contentMarkdown: string) {
+export async function upsertSummary(
+  jobId: string,
+  contentMarkdown: string,
+  options?: { contentJson?: string; outputFormat?: SummaryOutputFormat },
+) {
   const existing = await prisma.summary.findFirst({
     where: { jobId },
     orderBy: { updatedAt: "desc" },
   });
 
+  const data = {
+    contentMarkdown,
+    contentJson: options?.contentJson ?? null,
+    outputFormat: options?.outputFormat ?? "markdown",
+    status: "ready" as const,
+    generatedAt: new Date(),
+  };
+
   if (existing) {
     return prisma.summary.update({
       where: { id: existing.id },
-      data: {
-        contentMarkdown,
-        status: "ready",
-        generatedAt: new Date(),
-      },
+      data,
     });
   }
 
   return prisma.summary.create({
-    data: {
-      jobId,
-      contentMarkdown,
-      status: "ready",
-      generatedAt: new Date(),
-    },
+    data: { jobId, ...data },
   });
 }
 

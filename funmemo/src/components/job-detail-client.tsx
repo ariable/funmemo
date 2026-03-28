@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { SpeakerEditor } from "@/components/speaker-editor";
 import { SummaryActions } from "@/components/summary-actions";
 import { splitSummaryBlocks } from "@/lib/server/transcript";
-import type { JobDetail } from "@/lib/types";
+import type { JobDetail, StructuredSummary } from "@/lib/types";
 
 const statusTone = {
   queued: "bg-slate-100 text-slate-700",
@@ -34,49 +34,197 @@ function formatTimeline(seconds: number) {
   return `${minutes}:${remain}`;
 }
 
+function StructuredSummaryView({ summary }: { summary: StructuredSummary }) {
+  return (
+    <div className="space-y-4">
+      {summary.attendees.length > 0 && (
+        <section className="rounded-[24px] border border-slate-200/80 bg-white/84 p-4">
+          <h3 className="text-sm font-semibold tracking-[0.14em] text-slate-500 uppercase">
+            参会人
+          </h3>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {summary.attendees.map((a) => (
+              <span
+                key={`${a.name}-${a.role}`}
+                className="rounded-full bg-slate-50 px-3 py-1.5 text-sm text-slate-600"
+              >
+                {a.name}{a.role ? `（${a.role}）` : ""}
+              </span>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {summary.overview && (
+        <section className="rounded-[24px] border border-slate-200/80 bg-white/84 p-4">
+          <h3 className="text-sm font-semibold tracking-[0.14em] text-slate-500 uppercase">
+            会议概述
+          </h3>
+          <p className="mt-3 text-sm leading-7 text-slate-600">{summary.overview}</p>
+        </section>
+      )}
+
+      {summary.topics.map((topic) => (
+        <section
+          key={topic.title}
+          className="rounded-[24px] border border-slate-200/80 bg-white/84 p-4"
+        >
+          <h3 className="text-sm font-semibold tracking-[0.14em] text-slate-500 uppercase">
+            {topic.title}
+          </h3>
+          <div className="mt-3 space-y-2">
+            {topic.points.map((point) => (
+              <div
+                key={point}
+                className="rounded-2xl bg-slate-50 px-3 py-2.5 text-sm leading-6 text-slate-600"
+              >
+                {point}
+              </div>
+            ))}
+            {topic.conclusion && (
+              <div className="rounded-2xl bg-cyan-50 px-3 py-2.5 text-sm leading-6 text-cyan-700">
+                <span className="font-medium">结论：</span>{topic.conclusion}
+              </div>
+            )}
+          </div>
+        </section>
+      ))}
+
+      {summary.decisions.length > 0 && (
+        <section className="rounded-[24px] border border-slate-200/80 bg-white/84 p-4">
+          <h3 className="text-sm font-semibold tracking-[0.14em] text-slate-500 uppercase">
+            决议事项
+          </h3>
+          <div className="mt-3 space-y-2">
+            {summary.decisions.map((d) => (
+              <div
+                key={d}
+                className="rounded-2xl bg-slate-50 px-3 py-2.5 text-sm leading-6 text-slate-600"
+              >
+                {d}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {summary.actionItems.length > 0 && (
+        <section className="rounded-[24px] border border-emerald-200/80 bg-emerald-50/50 p-4">
+          <h3 className="text-sm font-semibold tracking-[0.14em] text-emerald-700 uppercase">
+            待办事项
+          </h3>
+          <div className="mt-3 space-y-2">
+            {summary.actionItems.map((item) => (
+              <div
+                key={`${item.owner}-${item.task}`}
+                className="grid grid-cols-[1fr_auto_auto] items-start gap-2 rounded-2xl bg-white px-3 py-2.5 text-sm"
+              >
+                <span className="leading-6 text-slate-700">{item.task}</span>
+                <span className="rounded-full bg-cyan-50 px-2 py-0.5 text-xs font-medium text-cyan-700">
+                  {item.owner}
+                </span>
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
+                  {item.deadline ?? "待确认"}
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {summary.risks.length > 0 && (
+        <section className="rounded-[24px] border border-amber-200/80 bg-amber-50/50 p-4">
+          <h3 className="text-sm font-semibold tracking-[0.14em] text-amber-700 uppercase">
+            风险与遗留
+          </h3>
+          <div className="mt-3 space-y-2">
+            {summary.risks.map((r) => (
+              <div
+                key={r}
+                className="rounded-2xl bg-white px-3 py-2.5 text-sm leading-6 text-slate-600"
+              >
+                {r}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}
+
+function MarkdownSummaryView({ markdown }: { markdown: string }) {
+  const blocks = splitSummaryBlocks(markdown);
+  if (blocks.length === 0) return null;
+
+  return (
+    <div className="space-y-4">
+      {blocks.map((block) => (
+        <section
+          key={block.title}
+          className="rounded-[24px] border border-slate-200/80 bg-white/84 p-4"
+        >
+          <h3 className="text-sm font-semibold tracking-[0.14em] text-slate-500 uppercase">
+            {block.title}
+          </h3>
+          <div className="mt-3 space-y-3">
+            {block.items.map((item) => (
+              <div
+                key={item}
+                className="rounded-2xl bg-slate-50 px-3 py-3 text-sm leading-6 text-slate-600"
+              >
+                {item}
+              </div>
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+  );
+}
+
 export function JobDetailClient({ jobId }: { jobId: string }) {
   const [job, setJob] = useState<JobDetail | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
-  const loadJob = useCallback(async () => {
-    const response = await fetch(`/api/job-detail?jobId=${encodeURIComponent(jobId)}`, {
-      cache: "no-store",
-    });
-    const result = (await response.json()) as JobDetail | { message?: string };
-
-    if (!response.ok) {
-      setError("message" in result ? result.message ?? "任务加载失败" : "任务加载失败");
-      setJob(null);
-      setLoading(false);
-      return;
-    }
-
-    setJob(result as JobDetail);
-    setLoading(false);
-  }, [jobId]);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    const run = async () => {
-      setError("");
-      const response = await fetch(`/api/job-detail?jobId=${encodeURIComponent(jobId)}`, {
-        cache: "no-store",
-      });
-      const result = (await response.json()) as JobDetail | { message?: string };
+    let cancelled = false;
 
-      if (!response.ok) {
-        setError("message" in result ? result.message ?? "任务加载失败" : "任务加载失败");
-        setJob(null);
-        setLoading(false);
-        return;
+    const fetchJob = async () => {
+      try {
+        const response = await fetch(`/api/job-detail?jobId=${encodeURIComponent(jobId)}`, { cache: "no-store" });
+        const result = (await response.json()) as JobDetail | { message?: string };
+        if (cancelled) return;
+
+        if (!response.ok) {
+          setError("message" in result ? result.message ?? "任务加载失败" : "任务加载失败");
+          setJob(null);
+        } else {
+          setError("");
+          setJob(result as JobDetail);
+        }
+      } catch {
+        if (!cancelled) {
+          setError("网络请求失败");
+        }
       }
-
-      setJob(result as JobDetail);
-      setLoading(false);
+      if (!cancelled) {
+        setLoading(false);
+      }
     };
 
-    void run();
-  }, [jobId, loadJob]);
+    void fetchJob();
+
+    return () => { cancelled = true; };
+  }, [jobId, refreshKey]);
+
+  const reload = () => {
+    setLoading(true);
+    setRefreshKey((k) => k + 1);
+  };
 
   if (loading) {
     return (
@@ -102,7 +250,7 @@ export function JobDetailClient({ jobId }: { jobId: string }) {
   }
 
   const currentStepIndex = stepSequence.indexOf(job.currentStep);
-  const summaryBlocks = job.summaryMarkdown ? splitSummaryBlocks(job.summaryMarkdown) : [];
+  const hasStructuredSummary = job.summaryFormat === "json" && job.summaryJson != null;
 
   return (
     <main className="min-h-screen px-4 py-6 md:px-8 lg:px-10">
@@ -199,11 +347,7 @@ export function JobDetailClient({ jobId }: { jobId: string }) {
                 <SpeakerEditor
                   jobId={job.id}
                   initialProfiles={job.transcript.speakerProfiles}
-                  onComplete={async () => {
-                    setLoading(true);
-                    setError("");
-                    await loadJob();
-                  }}
+                  onComplete={() => reload()}
                 />
               ) : (
                 <div className="rounded-[22px] border border-dashed border-slate-300 bg-white/70 p-5 text-sm text-slate-500">
@@ -266,34 +410,15 @@ export function JobDetailClient({ jobId }: { jobId: string }) {
             <div className="mt-4">
               <SummaryActions
                 jobId={job.id}
-                onComplete={async () => {
-                  setLoading(true);
-                  setError("");
-                  await loadJob();
-                }}
+                onComplete={() => reload()}
               />
             </div>
-            <div className="mt-6 space-y-4">
-              {summaryBlocks.length > 0 ? summaryBlocks.map((block) => (
-                <section
-                  key={block.title}
-                  className="rounded-[24px] border border-slate-200/80 bg-white/84 p-4"
-                >
-                  <h3 className="text-sm font-semibold tracking-[0.14em] text-slate-500 uppercase">
-                    {block.title}
-                  </h3>
-                  <div className="mt-3 space-y-3">
-                    {block.items.map((item) => (
-                      <div
-                        key={item}
-                        className="rounded-2xl bg-slate-50 px-3 py-3 text-sm leading-6 text-slate-600"
-                      >
-                        {item}
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              )) : (
+            <div className="mt-6">
+              {hasStructuredSummary ? (
+                <StructuredSummaryView summary={job.summaryJson!} />
+              ) : job.summaryMarkdown ? (
+                <MarkdownSummaryView markdown={job.summaryMarkdown} />
+              ) : (
                 <section className="rounded-[24px] border border-dashed border-slate-300 bg-white/70 p-5 text-sm leading-7 text-slate-500">
                   纪要尚未生成。完成发言人修正后，点击上方按钮即可基于真实 transcript 调用 LLM 生成中文纪要。
                 </section>

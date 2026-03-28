@@ -73,6 +73,8 @@ model Summary {
   id              String        @id @default(cuid())
   jobId           String
   contentMarkdown String?
+  contentJson     String?
+  outputFormat    String        @default("markdown")
   promptVersion   String?
   customPrompt    String?
   systemPrompt    String?

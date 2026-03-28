@@ -1,5 +1,10 @@
+import { createWriteStream } from "node:fs";
 import { mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
+
+const MAX_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024; // 2 GB
 
 const storageRoot = process.env.STORAGE_ROOT
   ? path.resolve(process.env.STORAGE_ROOT)
@@ -14,7 +19,12 @@ export function getJobDir(jobId: string) {
 }
 
 export function getJobPath(jobId: string, ...parts: string[]) {
-  return path.join(getJobDir(jobId), ...parts);
+  const jobDir = getJobDir(jobId);
+  const resolved = path.resolve(jobDir, ...parts);
+  if (!resolved.startsWith(jobDir + path.sep) && resolved !== jobDir) {
+    throw new Error("Invalid path: escapes job directory");
+  }
+  return resolved;
 }
 
 export async function ensureJobDirectories(jobId: string) {
@@ -39,6 +49,23 @@ export async function readJobText(jobId: string, relativePath: string) {
 export async function readJobJson<T>(jobId: string, relativePath: string) {
   const raw = await readJobText(jobId, relativePath);
   return JSON.parse(raw) as T;
+}
+
+export function getMaxUploadBytes() {
+  return MAX_UPLOAD_BYTES;
+}
+
+export async function writeJobFileStream(jobId: string, relativePath: string, file: File): Promise<string> {
+  if (file.size > MAX_UPLOAD_BYTES) {
+    throw new Error(`文件大小超过限制（最大 ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024 / 1024)} GB）`);
+  }
+  const targetPath = getJobPath(jobId, relativePath);
+  await mkdir(path.dirname(targetPath), { recursive: true });
+  const webStream = file.stream();
+  const nodeReadable = Readable.fromWeb(webStream as Parameters<typeof Readable.fromWeb>[0]);
+  const ws = createWriteStream(targetPath);
+  await pipeline(nodeReadable, ws);
+  return targetPath;
 }
 
 export async function fileSize(filePath: string) {

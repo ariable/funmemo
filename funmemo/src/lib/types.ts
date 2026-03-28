@@ -49,6 +49,34 @@ export interface SummaryBlock {
   items: string[];
 }
 
+export type SummaryOutputFormat = "json" | "markdown";
+
+export interface SummaryAttendee {
+  name: string;
+  role: string;
+}
+
+export interface SummaryTopic {
+  title: string;
+  points: string[];
+  conclusion?: string;
+}
+
+export interface SummaryActionItem {
+  owner: string;
+  task: string;
+  deadline?: string;
+}
+
+export interface StructuredSummary {
+  attendees: SummaryAttendee[];
+  overview: string;
+  topics: SummaryTopic[];
+  decisions: string[];
+  actionItems: SummaryActionItem[];
+  risks: string[];
+}
+
 export interface JobCard {
   id: string;
   title: string;
@@ -67,4 +95,6 @@ export interface JobCard {
 export interface JobDetail extends JobCard {
   transcript: Transcript | null;
   summaryMarkdown: string | null;
+  summaryJson: StructuredSummary | null;
+  summaryFormat: SummaryOutputFormat | null;
 }
