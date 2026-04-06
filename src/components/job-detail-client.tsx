@@ -200,28 +200,33 @@ function TranscriptSection({
           ) : null}
 
           {selectedProfile ? (
-            <>
-              <input
-                value={selectedProfile.speakerName ?? ""}
-                onChange={(event) => onUpdateProfile(selectedProfile.speakerId, "speakerName", event.target.value)}
-                placeholder="姓名"
-                className="min-w-28 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 outline-none transition focus:border-cyan-300"
-              />
-              <input
-                value={selectedProfile.speakerRole ?? ""}
-                onChange={(event) => onUpdateProfile(selectedProfile.speakerId, "speakerRole", event.target.value)}
-                placeholder="职务"
-                className="min-w-32 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 outline-none transition focus:border-cyan-300"
-              />
-              <button
-                type="button"
-                onClick={onSaveProfiles}
-                disabled={savingProfiles}
-                className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-cyan-300 hover:text-cyan-700 disabled:opacity-60"
-              >
-                {savingProfiles ? "保存中..." : "保存"}
-              </button>
-            </>
+            <div className="flex w-full flex-col gap-3 lg:flex-row lg:items-center">
+              <div className="flex flex-1 flex-wrap items-center gap-2">
+                <input
+                  value={selectedProfile.speakerName ?? ""}
+                  onChange={(event) => onUpdateProfile(selectedProfile.speakerId, "speakerName", event.target.value)}
+                  placeholder="姓名"
+                  className="min-w-28 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 outline-none transition focus:border-cyan-300"
+                />
+                <input
+                  value={selectedProfile.speakerRole ?? ""}
+                  onChange={(event) => onUpdateProfile(selectedProfile.speakerId, "speakerRole", event.target.value)}
+                  placeholder="职务"
+                  className="min-w-32 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 outline-none transition focus:border-cyan-300"
+                />
+                <button
+                  type="button"
+                  onClick={onSaveProfiles}
+                  disabled={savingProfiles}
+                  className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-cyan-300 hover:text-cyan-700 disabled:opacity-60"
+                >
+                  {savingProfiles ? "保存中..." : "保存"}
+                </button>
+              </div>
+              <p className="max-w-sm text-sm leading-6 text-slate-500 lg:text-right">
+                若多个说话人实际为同一人，请填写相同的姓名和职务
+              </p>
+            </div>
           ) : null}
         </div>
       </div>
