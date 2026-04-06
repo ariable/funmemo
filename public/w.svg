@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 180">
+  <defs>
+    <!-- Horizontal top cut at y=20 -->
+    <clipPath id="topCut">
+      <rect x="0" y="0" width="300" height="160"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#topCut)">
+    <!-- Blue V (bottom layer, right) : closer + wider opening -->
+    <path
+      d="M 100 -40
+         L 190 160
+         L 280 -40"
+      fill="none"
+      stroke="#0A6BFF"
+      stroke-width="26"
+      stroke-linejoin="miter"
+      stroke-miterlimit="10" />
+
+    <!-- Yellow V (top layer, left) : closer + wider opening -->
+    <path
+      d="M 20 -40
+         L 110 160
+         L 200 -40"
+      fill="none"
+      stroke="#F5A400"
+      stroke-width="26"
+      stroke-linejoin="miter"
+      stroke-miterlimit="10" />
+  </g>
+</svg>

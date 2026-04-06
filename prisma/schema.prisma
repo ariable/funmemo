@@ -1,0 +1,148 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Job {
+  id               String           @id @default(cuid())
+  title            String?
+  meetingAt        DateTime?
+  meetingLocation  String?
+  sourceFilename   String
+  status           JobStatus        @default(queued)
+  currentStep      JobStep          @default(upload)
+  errorMessage     String?
+  audioDurationSec Float?
+  segmentCount     Int?
+  speakerCount     Int?
+  language         String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  completedAt      DateTime?
+  files            JobFile[]
+  speakerProfiles  SpeakerProfile[]
+  summaries        Summary[]
+  downloads        Download[]
+  events           JobEvent[]
+}
+
+model AppConfig {
+  id                    String   @id @default("default")
+  transcriptionApiBaseUrl String?
+  transcriptionApiToken String?
+  transcriptionModel    String?
+  llmApiBaseUrl         String?
+  llmApiKey             String?
+  llmModel              String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+model JobFile {
+  id        String   @id @default(cuid())
+  jobId     String
+  fileType  FileType
+  path      String
+  mimeType  String?
+  sizeBytes Int?
+  createdAt DateTime @default(now())
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId, fileType])
+}
+
+model SpeakerProfile {
+  id             String   @id @default(cuid())
+  jobId          String
+  speakerId      String
+  speakerName    String?
+  speakerRole    String?
+  speakerDisplay String?
+  sortOrder      Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  job            Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, speakerId])
+  @@index([jobId, sortOrder])
+}
+
+model Summary {
+  id              String        @id @default(cuid())
+  jobId           String
+  contentMarkdown String?
+  contentJson     String?
+  outputFormat    String        @default("markdown")
+  promptVersion   String?
+  customPrompt    String?
+  systemPrompt    String?
+  status          SummaryStatus @default(pending)
+  generatedAt     DateTime?
+  updatedAt       DateTime      @updatedAt
+  job             Job           @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId, status])
+}
+
+model Download {
+  id           String   @id @default(cuid())
+  jobId        String
+  downloadType String
+  filePath     String
+  clientIp     String?
+  userAgent    String?
+  createdAt    DateTime @default(now())
+  job          Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId, createdAt])
+}
+
+model JobEvent {
+  id          String   @id @default(cuid())
+  jobId       String
+  eventType   String
+  message     String?
+  payloadJson String?
+  createdAt   DateTime @default(now())
+  job         Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId, createdAt])
+}
+
+enum JobStatus {
+  queued
+  transcribing
+  transcript_ready
+  speaker_editing
+  summarizing
+  summary_ready
+  completed
+  failed
+}
+
+enum JobStep {
+  upload
+  transcription
+  annotation
+  summary
+  export
+}
+
+enum FileType {
+  source_audio
+  transcript_raw
+  transcript_annotated
+  summary_markdown
+  export_markdown
+  export_json
+}
+
+enum SummaryStatus {
+  pending
+  processing
+  ready
+  failed
+}
