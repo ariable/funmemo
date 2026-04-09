@@ -31,6 +31,17 @@ html {
   scroll-behavior: smooth;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 body {
   color: var(--foreground);
   background:
@@ -52,8 +63,10 @@ a {
 }
 
 .glass-panel {
+  background: rgba(255, 255, 255, 0.9);
   background: var(--panel);
   backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
   border: 1px solid var(--line);
   box-shadow:
     0 20px 60px rgba(15, 23, 42, 0.08),

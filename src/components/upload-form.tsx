@@ -157,7 +157,7 @@ export function UploadForm() {
           </p>
         ) : null}
         {state?.error ? (
-          <p className="text-sm text-rose-600">{state.error}</p>
+          <p role="alert" className="text-sm text-rose-600">{state.error}</p>
         ) : null}
       </div>
     </form>

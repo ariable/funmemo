@@ -174,6 +174,12 @@ export async function saveSpeakersAction(jobId: string, speakerProfiles: Speaker
 
   const annotatedTranscript = applySpeakerProfiles(job.transcript, speakerProfiles);
 
+  await writeJobFile(
+    jobId,
+    "transcript/transcript.annotated.json",
+    JSON.stringify(annotatedTranscript, null, 2),
+  );
+
   await prisma.$transaction([
     prisma.speakerProfile.deleteMany({ where: { jobId } }),
     prisma.speakerProfile.createMany({
@@ -196,12 +202,6 @@ export async function saveSpeakersAction(jobId: string, speakerProfiles: Speaker
     }),
     prisma.summary.deleteMany({ where: { jobId } }),
   ]);
-
-  await writeJobFile(
-    jobId,
-    "transcript/transcript.annotated.json",
-    JSON.stringify(annotatedTranscript, null, 2),
-  );
 
   revalidatePath(`/jobs/${jobId}`);
 }
@@ -253,13 +253,20 @@ export async function generateSummaryAction(jobId: string, format: SummaryOutput
 }
 
 export async function saveSegmentEditsAction(jobId: string, edits: Record<number, string>) {
+  const editIds = Object.keys(edits).map(Number);
+  if (editIds.length === 0) return;
+
   const transcript = await readJobJson<Transcript>(jobId, "transcript/transcript.annotated.json");
 
+  let changed = false;
   for (const segment of transcript.segments) {
-    if (edits[segment.id] !== undefined) {
+    if (edits[segment.id] !== undefined && segment.text !== edits[segment.id]) {
       segment.text = edits[segment.id];
+      changed = true;
     }
   }
+  if (!changed) return;
+
   transcript.text = transcript.segments.map((s) => s.text).join(" ");
 
   await writeJobFile(jobId, "transcript/transcript.annotated.json", JSON.stringify(transcript, null, 2));

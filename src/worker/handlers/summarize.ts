@@ -16,15 +16,16 @@ export async function handleSummarize(jobId: string) {
   const format = summaryRecord?.outputFormat === "json" ? "json" : "markdown";
 
   const result = await generateMeetingSummary(job.transcript, format);
+
+  await writeJobFile(jobId, "summary/summary.md", result.markdown);
+  if (result.format === "json") {
+    await writeJobFile(jobId, "summary/summary.json", JSON.stringify(result.structured, null, 2));
+  }
+
   await upsertSummary(jobId, result.markdown, {
     contentJson: result.format === "json" ? JSON.stringify(result.structured) : undefined,
     outputFormat: result.format,
   });
-  await writeJobFile(jobId, "summary/summary.md", result.markdown);
-
-  if (result.format === "json") {
-    await writeJobFile(jobId, "summary/summary.json", JSON.stringify(result.structured, null, 2));
-  }
 
   await prisma.job.update({
     where: { id: jobId },

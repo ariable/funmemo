@@ -38,6 +38,12 @@ async function pollOnce() {
       });
     }
   } else if (job.status === "summarizing") {
+    const claimed = await prisma.job.updateMany({
+      where: { id: job.id, status: "summarizing", updatedAt: job.updatedAt },
+      data: { status: "summarizing" },
+    });
+    if (claimed.count === 0) return;
+
     log(`summarizing job ${job.id}`);
     try {
       await handleSummarize(job.id);

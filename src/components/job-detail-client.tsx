@@ -542,7 +542,19 @@ export function JobDetailClient({ jobId, step }: { jobId: string; step?: string 
     }, 5000);
 
     return () => clearTimeout(timer);
-  }, [job?.status, step]);
+  }, [job?.status, step, reloadKey]);
+
+  useEffect(() => {
+    if (job?.status !== "queued" && job?.status !== "transcribing") {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setReloadKey((current) => current + 1);
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, [job?.status, reloadKey]);
 
   if (loading) {
     return (
@@ -739,33 +751,62 @@ export function JobDetailClient({ jobId, step }: { jobId: string; step?: string 
 
         {(step === "annotation" || !step) && (
           <>
-            <AnnotationOverviewCard
-              profiles={profiles}
-              filterSpeaker={filterSpeaker}
-              onSelectSpeaker={setFilterSpeaker}
-              onSave={handleSave}
-              onNext={handleNext}
-              saving={isSaving}
-              saveError={saveError}
-              canProceed={canProceedToSummary}
-            />
-            <TranscriptSection
-              transcript={activeJob.transcript}
-              profiles={profiles}
-              filterSpeaker={filterSpeaker}
-              onFilterSpeakerChange={setFilterSpeaker}
-              segmentEdits={segmentEdits}
-              onUpdateProfile={(speakerId, key, value) =>
-                setProfiles((current) =>
-                  current.map((profile) =>
-                    profile.speakerId === speakerId ? { ...profile, [key]: value } : profile,
-                  ),
-                )
-              }
-              onUpdateSegmentText={updateSegmentText}
-              onSaveProfiles={handleSave}
-              savingProfiles={isSaving}
-            />
+            {(activeJob.status === "queued" || activeJob.status === "transcribing") && (
+              <section className="glass-panel rounded-[28px] p-8 text-center">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-50">
+                  <svg className="h-6 w-6 animate-spin text-amber-500" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                  </svg>
+                </div>
+                <p className="mt-4 text-sm font-medium text-slate-700">正在转录，请稍候…</p>
+                <p className="mt-1 text-xs text-slate-400">转录完成后将自动显示标注内容</p>
+              </section>
+            )}
+
+            {activeJob.status === "failed" && (
+              <section role="alert" className="glass-panel rounded-[28px] p-8 text-center">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-rose-50">
+                  <svg className="h-6 w-6 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                  </svg>
+                </div>
+                <p className="mt-4 text-sm font-medium text-rose-700">转录失败</p>
+                <p className="mt-1 text-xs text-slate-400">请返回工作台重新上传，或联系管理员检查日志</p>
+              </section>
+            )}
+
+            {activeJob.status !== "queued" && activeJob.status !== "transcribing" && activeJob.status !== "failed" && (
+              <>
+                <AnnotationOverviewCard
+                  profiles={profiles}
+                  filterSpeaker={filterSpeaker}
+                  onSelectSpeaker={setFilterSpeaker}
+                  onSave={handleSave}
+                  onNext={handleNext}
+                  saving={isSaving}
+                  saveError={saveError}
+                  canProceed={canProceedToSummary}
+                />
+                <TranscriptSection
+                  transcript={activeJob.transcript}
+                  profiles={profiles}
+                  filterSpeaker={filterSpeaker}
+                  onFilterSpeakerChange={setFilterSpeaker}
+                  segmentEdits={segmentEdits}
+                  onUpdateProfile={(speakerId, key, value) =>
+                    setProfiles((current) =>
+                      current.map((profile) =>
+                        profile.speakerId === speakerId ? { ...profile, [key]: value } : profile,
+                      ),
+                    )
+                  }
+                  onUpdateSegmentText={updateSegmentText}
+                  onSaveProfiles={handleSave}
+                  savingProfiles={isSaving}
+                />
+              </>
+            )}
           </>
         )}
 
