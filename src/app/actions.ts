@@ -4,6 +4,7 @@ import path from "node:path";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
+import { requireCurrentUser } from "@/lib/server/auth";
 import { saveAppConfig } from "@/lib/server/config";
 import { transcribeWithFunAsr } from "@/lib/server/funasr";
 import { getJobDetail } from "@/lib/server/jobs";
@@ -16,6 +17,7 @@ export async function saveSettingsAction(
   _previousState: { success?: boolean; error?: string } | undefined,
   formData: FormData,
 ) {
+  await requireCurrentUser();
   try {
     await saveAppConfig({
       transcriptionApiBaseUrl: String(formData.get("transcriptionApiBaseUrl") ?? ""),
@@ -39,6 +41,7 @@ export async function uploadJobAction(
   _previousState: { id?: string; error?: string } | undefined,
   formData: FormData,
 ) {
+  const currentUser = await requireCurrentUser();
   const requestHeaders = await headers();
   const file = formData.get("file");
   const titleInput = formData.get("title");
@@ -61,6 +64,8 @@ export async function uploadJobAction(
 
   const job = await prisma.job.create({
     data: {
+      userId: currentUser.id,
+      userDisplayName: currentUser.displayName,
       title: title || path.parse(sourceFilename).name,
       meetingAt: meetingAt && !Number.isNaN(meetingAt.getTime()) ? meetingAt : null,
       meetingLocation: meetingLocation || null,
@@ -154,6 +159,8 @@ export async function uploadJobAction(
     await prisma.uploadLog.create({
       data: buildUploadLogData({
         jobId: job.id,
+        userId: currentUser.id,
+        userDisplayName: currentUser.displayName,
         clientIp: resolveClientIp(requestHeaders),
         userAgent: requestHeaders.get("user-agent"),
         sourceFilename,
@@ -182,7 +189,8 @@ export async function uploadJobAction(
 }
 
 export async function saveSpeakersAction(jobId: string, speakerProfiles: SpeakerProfileInput[]) {
-  const job = await getJobDetail(jobId);
+  const currentUser = await requireCurrentUser();
+  const job = await getJobDetail(jobId, { userId: currentUser.id });
   if (!job || !job.transcript) {
     throw new Error("任务或 transcript 不存在");
   }
@@ -222,7 +230,8 @@ export async function saveSpeakersAction(jobId: string, speakerProfiles: Speaker
 }
 
 export async function generateSummaryAction(jobId: string, format: SummaryOutputFormat = "markdown") {
-  const job = await getJobDetail(jobId);
+  const currentUser = await requireCurrentUser();
+  const job = await getJobDetail(jobId, { userId: currentUser.id });
   if (!job || !job.transcript) {
     throw new Error("任务或 transcript 不存在");
   }
@@ -268,8 +277,14 @@ export async function generateSummaryAction(jobId: string, format: SummaryOutput
 }
 
 export async function saveSegmentEditsAction(jobId: string, edits: Record<number, string>) {
+  const currentUser = await requireCurrentUser();
   const editIds = Object.keys(edits).map(Number);
   if (editIds.length === 0) return;
+
+  const job = await getJobDetail(jobId, { userId: currentUser.id });
+  if (!job || !job.transcript) {
+    throw new Error("任务或 transcript 不存在");
+  }
 
   const transcript = await readJobJson<Transcript>(jobId, "transcript/transcript.annotated.json");
 
@@ -288,6 +303,7 @@ export async function saveSegmentEditsAction(jobId: string, edits: Record<number
 }
 
 export async function deleteJobAction(jobId: string) {
+  const currentUser = await requireCurrentUser();
   const trimmedJobId = jobId.trim();
 
   if (!trimmedJobId) {
@@ -295,9 +311,16 @@ export async function deleteJobAction(jobId: string) {
   }
 
   try {
-    await prisma.job.delete({
-      where: { id: trimmedJobId },
+    const deleted = await prisma.job.deleteMany({
+      where: {
+        id: trimmedJobId,
+        userId: currentUser.id,
+      },
     });
+
+    if (deleted.count === 0) {
+      return { error: "任务不存在或无权删除" };
+    }
 
     await removeJobDirectory(trimmedJobId);
 

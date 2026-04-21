@@ -1,13 +1,21 @@
 import Image from "next/image";
 import Link from "next/link";
 import { connection } from "next/server";
+import { AuthRequired } from "@/components/auth-required";
 import { RecentJobs } from "@/components/recent-jobs";
 import { UploadForm } from "@/components/upload-form";
+import { UserBadge } from "@/components/user-badge";
+import { getCurrentUser } from "@/lib/server/auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
   await connection();
+  const currentUser = await getCurrentUser();
+
+  if (!currentUser) {
+    return <AuthRequired />;
+  }
 
   return (
     <main className="min-h-screen px-4 py-6 text-slate-900 md:px-8 lg:px-10">
@@ -31,6 +39,7 @@ export default async function Home() {
           >
             设置
           </Link>
+          <UserBadge user={currentUser} />
         </header>
 
         <section className="glass-panel rounded-[28px] p-6 md:p-8">

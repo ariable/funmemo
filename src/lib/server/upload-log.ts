@@ -30,6 +30,8 @@ export function resolveClientIp(headers: HeaderReader) {
 
 export function buildUploadLogData(input: {
   jobId: string;
+  userId: string;
+  userDisplayName?: string | null;
   sourceFilename: string;
   audioDurationSec?: number | null;
   fileSizeBytes?: number | null;
@@ -38,6 +40,8 @@ export function buildUploadLogData(input: {
 }) {
   return {
     jobId: input.jobId,
+    userId: input.userId,
+    userDisplayName: input.userDisplayName?.trim() || null,
     clientIp: input.clientIp?.trim() || null,
     userAgent: input.userAgent?.trim() || null,
     sourceFilename: input.sourceFilename,

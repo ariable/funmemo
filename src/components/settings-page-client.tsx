@@ -3,11 +3,17 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { SettingsForm } from "@/components/settings-form";
+import { UserBadge } from "@/components/user-badge";
 import type { AppConfigDTO } from "@/lib/server/config";
+import type { CurrentUser } from "@/lib/server/auth-shared";
 
-export function SettingsPageClient() {
+export function SettingsPageClient({ userDisplayName }: { userDisplayName: string }) {
   const [config, setConfig] = useState<AppConfigDTO | null>(null);
   const [error, setError] = useState("");
+  const currentUser: CurrentUser = {
+    id: "",
+    displayName: userDisplayName,
+  };
 
   useEffect(() => {
     const run = async () => {
@@ -46,7 +52,10 @@ export function SettingsPageClient() {
               </p>
             </div>
             <div className="rounded-[24px] border border-white/70 bg-white/80 px-4 py-3 text-sm text-slate-600">
-              配置保存在 SQLite
+              <div className="flex flex-col items-end gap-3">
+                <UserBadge user={currentUser} />
+                <span>配置保存在 SQLite</span>
+              </div>
             </div>
           </div>
         </section>

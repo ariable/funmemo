@@ -1,4 +1,6 @@
+import { AuthRequired } from "@/components/auth-required";
 import { JobFlowClient } from "@/components/job-detail-client";
+import { getCurrentUser } from "@/lib/server/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -8,6 +10,11 @@ export default async function JobSummaryPage({
   params: Promise<{ jobId: string }>;
 }) {
   const { jobId } = await params;
+  const currentUser = await getCurrentUser();
 
-  return <JobFlowClient jobId={jobId} step="summary" />;
+  if (!currentUser) {
+    return <AuthRequired />;
+  }
+
+  return <JobFlowClient jobId={jobId} step="summary" userDisplayName={currentUser.displayName} />;
 }

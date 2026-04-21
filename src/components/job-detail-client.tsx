@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { UserBadge } from "@/components/user-badge";
 import { generateSummaryAction, saveSegmentEditsAction, saveSpeakersAction } from "@/app/actions";
 import { splitSummaryBlocks } from "@/lib/server/transcript";
 import type { JobDetail, SpeakerProfileInput, StructuredSummary, SummaryOutputFormat } from "@/lib/types";
@@ -462,11 +463,27 @@ function MarkdownSummaryView({ markdown }: { markdown: string }) {
   );
 }
 
-export function JobFlowClient({ jobId, step }: { jobId: string; step?: string }) {
-  return <JobDetailClient jobId={jobId} step={step} />;
+export function JobFlowClient({
+  jobId,
+  step,
+  userDisplayName,
+}: {
+  jobId: string;
+  step?: string;
+  userDisplayName: string;
+}) {
+  return <JobDetailClient jobId={jobId} step={step} userDisplayName={userDisplayName} />;
 }
 
-export function JobDetailClient({ jobId, step }: { jobId: string; step?: string }) {
+export function JobDetailClient({
+  jobId,
+  step,
+  userDisplayName,
+}: {
+  jobId: string;
+  step?: string;
+  userDisplayName: string;
+}) {
   const router = useRouter();
   const [job, setJob] = useState<JobDetail | null>(null);
   const [error, setError] = useState("");
@@ -688,6 +705,9 @@ export function JobDetailClient({ jobId, step }: { jobId: string; step?: string 
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
+              <div className="sm:col-span-2 sm:justify-self-end">
+                <UserBadge user={{ id: "", displayName: userDisplayName }} />
+              </div>
               {[
                 { label: "当前进度", value: `${activeJob.progress}%` },
                 { label: "发言人数", value: `${activeJob.speakerCount}` },

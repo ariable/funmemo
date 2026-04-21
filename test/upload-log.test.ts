@@ -17,6 +17,8 @@ test("resolveClientIp prefers the first forwarded IP", () => {
 test("buildUploadLogData normalizes optional fields", () => {
   const data = buildUploadLogData({
     jobId: "job_123",
+    userId: "user_123",
+    userDisplayName: "张三",
     clientIp: " 203.0.113.10 ",
     userAgent: " Test Agent ",
     sourceFilename: "meeting.wav",
@@ -26,6 +28,8 @@ test("buildUploadLogData normalizes optional fields", () => {
 
   assert.deepEqual(data, {
     jobId: "job_123",
+    userId: "user_123",
+    userDisplayName: "张三",
     clientIp: "203.0.113.10",
     userAgent: "Test Agent",
     sourceFilename: "meeting.wav",
@@ -44,6 +48,8 @@ test("deleting a job does not delete upload logs", async () => {
   try {
     const job = await prisma.job.create({
       data: {
+        userId: "user_123",
+        userDisplayName: "张三",
         title: "Test upload",
         sourceFilename,
       },
@@ -53,6 +59,8 @@ test("deleting a job does not delete upload logs", async () => {
     await prisma.uploadLog.create({
       data: {
         jobId,
+        userId: "user_123",
+        userDisplayName: "张三",
         clientIp: "203.0.113.10",
         sourceFilename,
         audioDurationSec: 123,

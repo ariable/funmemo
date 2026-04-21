@@ -69,10 +69,123 @@ npm start
 | `LLM_MODEL` | LLM 模型名称 | — |
 | `STORAGE_ROOT` | 文件存储目录 | `./storage` |
 | `DATABASE_URL` | 数据库连接地址 | `file:./dev.db` |
+| `APP_URL` | 应用外部访问地址 | `http://localhost:3000` |
+| `AUTH_SECRET` | 本地登录会话签名密钥 | — |
+| `AUTH_SESSION_MAX_AGE_SEC` | 本地会话有效期（秒） | `604800` |
+| `AUTH_CASDOOR_ISSUER` | Casdoor OIDC Issuer 地址 | — |
+| `AUTH_CASDOOR_ID` | Casdoor Application Client ID | — |
+| `AUTH_CASDOOR_SECRET` | Casdoor Application Client Secret | — |
+| `AUTH_CASDOOR_SCOPE` | Casdoor OAuth scope | `openid profile email` |
+| `AUTH_LOGIN_URL` | 自定义登录入口（可选，默认使用应用内 Casdoor 登录） | — |
+| `AUTH_LOGIN_RETURN_TO_PARAM` | 统一登录入口使用的回跳参数名 | `returnTo` |
+| `AUTH_USER_ID_HEADER` | 可选：上游代理注入的用户 ID 请求头回退值 | `x-user-id` |
+| `AUTH_USER_NAME_HEADER` | 可选：上游代理注入的用户展示名请求头回退值 | `x-user-name` |
+| `AUTH_USER_LOGIN_HEADER` | 可选：上游代理注入的登录名请求头回退值 | `x-user-login` |
 
 ### Web 端设置
 
 启动后访问 `/settings` 页面，可在线配置以上参数并即时生效（写入数据库 `AppConfig` 表）。
+
+## 登录与用户隔离
+
+当前实现已经支持：
+
+- 应用内直接接入 Casdoor OIDC 登录
+- 静默登录（Silent Login）与失败回退普通登录
+- 本地签名会话 Cookie
+- 按用户隔离任务与日志
+
+同时也保留了“上游代理注入用户头”的回退能力，方便你部署在已有网关后面。
+
+### 当前身份字段
+
+系统当前优先使用本地登录会话；如果部署在已有认证代理后，也可以从请求头里回退读取以下字段：
+
+- `x-user-id`：用户唯一 ID，用于权限判断和任务归属
+- `x-user-name`：用户展示名，用于右上角显示和日志记录
+- `x-user-login`：登录名/邮箱，用于展示名缺失时回退
+
+如果你有自己的网关或认证代理，也可以通过环境变量修改这些头名。
+
+### 当前权限行为
+
+- 新建任务时会写入 `userId`
+- 历史任务列表只返回当前用户自己的任务
+- 任务详情、标注、生成纪要、删除、导出都按 `userId` 校验
+- 上传日志和下载日志会记录 `userId`、展示名、IP、User-Agent
+- 删除任务不会删除上传日志，便于后续统计
+
+### Casdoor 接入说明
+
+当前仓库已经内置 Casdoor 登录路由：
+
+- `/api/auth/sign-in/casdoor`
+- `/api/auth/callback/casdoor`
+- `/api/auth/logout`
+
+### Silent Login 与失败回退
+
+当前已经实现了静默登录状态机：
+
+1. 未登录访问受保护页面时，自动跳转到应用内 Casdoor 登录入口
+2. 第一次跳转会附带 `silentSignin=1`
+3. 如果静默登录后回到页面时仍未登录，系统会自动回退到普通登录
+4. 如果普通登录回来后仍没有用户身份，则停止跳转并显示登录提示，避免死循环
+
+默认情况下，系统会使用：
+
+```text
+/api/auth/sign-in/casdoor?attempt=silent&returnTo=...
+```
+
+如果你要替换成自己的统一登录入口，也可以设置：
+
+```text
+AUTH_LOGIN_URL=http://192.168.43.249:3210/api/auth/sign-in/casdoor
+AUTH_LOGIN_RETURN_TO_PARAM=returnTo
+```
+
+此时静默登录首跳会类似于：
+
+```text
+http://192.168.43.249:3210/api/auth/sign-in/casdoor?attempt=silent&silentSignin=1&returnTo=http%3A%2F%2F192.168.43.249%3A3210%2F%3FauthAttempt%3Dsilent
+```
+
+### Casdoor 配置
+
+按你给的配置，应用内直连 Casdoor 时：
+
+- 应用地址：`http://192.168.43.249:3210`
+- Casdoor Issuer：`http://192.168.43.249:8910`
+
+常见的 Casdoor 回调地址应填写：
+
+```text
+http://192.168.43.249:3210/api/auth/callback/casdoor
+```
+
+如果你还要支持本机开发，也建议一并加入：
+
+```text
+http://localhost:3210/api/auth/callback/casdoor
+```
+
+如果你准备把 FunMemo 直接接入 Casdoor，而不是走上游代理，那么 Casdoor Application 建议至少配置：
+
+- Redirect URIs
+  - `http://192.168.43.249:3210/api/auth/callback/casdoor`
+  - `http://localhost:3210/api/auth/callback/casdoor`
+- Home URL
+  - `http://192.168.43.249:3210/`
+- Auto Sign-In
+  - 开启
+
+如果需要登出回调，通常也会配：
+
+```text
+http://192.168.43.249:3210/
+http://localhost:3210/
+```
 
 ## 使用流程
 
@@ -149,6 +262,25 @@ npm run db:push
 # 打开 Prisma Studio（可视化管理）
 npm run db:studio
 ```
+
+## 测试
+
+```bash
+# 运行测试
+npm test
+
+# 运行静态检查
+npm run lint
+```
+
+当前已覆盖：
+
+- 上传日志字段构造与 IP 解析
+- 删除任务后上传日志仍然保留
+- 用户头解析
+- 本地会话 token 编解码
+- 静默登录与普通登录回退 URL 构造
+- 基于 `userId` 的任务隔离查询
 
 ## 任务状态流
 

@@ -8,6 +8,8 @@ datasource db {
 
 model Job {
   id               String           @id @default(cuid())
+  userId           String           @default("")
+  userDisplayName  String?
   title            String?
   meetingAt        DateTime?
   meetingLocation  String?
@@ -27,11 +29,15 @@ model Job {
   summaries        Summary[]
   downloads        Download[]
   events           JobEvent[]
+
+  @@index([userId, createdAt])
 }
 
 model UploadLog {
   id               String   @id @default(cuid())
   jobId            String
+  userId           String
+  userDisplayName  String?
   clientIp         String?
   userAgent        String?
   sourceFilename   String
@@ -41,6 +47,7 @@ model UploadLog {
 
   @@index([createdAt])
   @@index([jobId])
+  @@index([userId, createdAt])
 }
 
 model AppConfig {
@@ -104,6 +111,8 @@ model Summary {
 model Download {
   id           String   @id @default(cuid())
   jobId        String
+  userId       String?
+  userDisplayName String?
   downloadType String
   filePath     String
   clientIp     String?

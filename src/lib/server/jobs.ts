@@ -77,8 +77,13 @@ export function toJobCard(job: Job): JobCard {
   };
 }
 
-export async function listJobs() {
+export async function listJobs(options?: { userId?: string }) {
   const jobs = await prisma.job.findMany({
+    where: options?.userId
+      ? {
+          userId: options.userId,
+        }
+      : undefined,
     orderBy: {
       createdAt: "desc",
     },
@@ -97,9 +102,19 @@ function mapSpeakerProfiles(speakerProfiles: SpeakerProfile[]) {
   }));
 }
 
-export async function getJobDetail(jobId: string): Promise<JobDetail | null> {
-  const job = await prisma.job.findUnique({
-    where: { id: jobId },
+export async function getJobDetail(
+  jobId: string,
+  options?: { userId?: string },
+): Promise<JobDetail | null> {
+  const job = await prisma.job.findFirst({
+    where: {
+      id: jobId,
+      ...(options?.userId
+        ? {
+            userId: options.userId,
+          }
+        : {}),
+    },
     include: {
       speakerProfiles: {
         orderBy: {
