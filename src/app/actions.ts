@@ -2,12 +2,14 @@
 
 import path from "node:path";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { saveAppConfig } from "@/lib/server/config";
 import { transcribeWithFunAsr } from "@/lib/server/funasr";
 import { getJobDetail } from "@/lib/server/jobs";
 import { ensureJobDirectories, fileSize, getMaxUploadBytes, readJobJson, removeJobDirectory, writeJobFile, writeJobFileStream } from "@/lib/server/storage";
 import { applySpeakerProfiles } from "@/lib/server/transcript";
+import { buildUploadLogData, resolveClientIp } from "@/lib/server/upload-log";
 import type { SpeakerProfileInput, SummaryOutputFormat, Transcript } from "@/lib/types";
 
 export async function saveSettingsAction(
@@ -37,6 +39,7 @@ export async function uploadJobAction(
   _previousState: { id?: string; error?: string } | undefined,
   formData: FormData,
 ) {
+  const requestHeaders = await headers();
   const file = formData.get("file");
   const titleInput = formData.get("title");
   const meetingAtInput = formData.get("meetingAt");
@@ -74,6 +77,7 @@ export async function uploadJobAction(
       path.join("source", sourceFilename),
       file,
     );
+    const sourceSizeBytes = await fileSize(sourcePath);
 
     await prisma.jobFile.create({
       data: {
@@ -81,7 +85,7 @@ export async function uploadJobAction(
         fileType: "source_audio",
         path: sourcePath,
         mimeType: file.type || "audio/*",
-        sizeBytes: await fileSize(sourcePath),
+        sizeBytes: sourceSizeBytes,
       },
     });
 
@@ -145,6 +149,17 @@ export async function uploadJobAction(
         speakerCount: annotatedTranscript.speakerProfiles.length,
         language: annotatedTranscript.language,
       },
+    });
+
+    await prisma.uploadLog.create({
+      data: buildUploadLogData({
+        jobId: job.id,
+        clientIp: resolveClientIp(requestHeaders),
+        userAgent: requestHeaders.get("user-agent"),
+        sourceFilename,
+        audioDurationSec: annotatedTranscript.duration,
+        fileSizeBytes: sourceSizeBytes,
+      }),
     });
 
     revalidatePath("/");

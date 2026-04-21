@@ -29,6 +29,20 @@ model Job {
   events           JobEvent[]
 }
 
+model UploadLog {
+  id               String   @id @default(cuid())
+  jobId            String
+  clientIp         String?
+  userAgent        String?
+  sourceFilename   String
+  audioDurationSec Float?
+  fileSizeBytes    Int?
+  createdAt        DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([jobId])
+}
+
 model AppConfig {
   id                    String   @id @default("default")
   transcriptionApiBaseUrl String?
