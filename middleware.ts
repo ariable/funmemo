@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { buildLoginRedirectUrl } from "@/lib/server/auth-redirect";
-import { getAppUrl } from "@/lib/server/casdoor";
+import { resolveAppUrl } from "@/lib/server/casdoor";
 
 function isProtectedPath(pathname: string) {
   return pathname === "/" || pathname.startsWith("/settings") || pathname.startsWith("/jobs");
@@ -16,7 +16,9 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const loginUrl = process.env.AUTH_LOGIN_URL?.trim() || `${getAppUrl()}/api/auth/sign-in/casdoor`;
+  const loginUrl =
+    process.env.AUTH_LOGIN_URL?.trim() ||
+    `${resolveAppUrl({ requestUrl: request.url, headers: request.headers })}/api/auth/sign-in/casdoor`;
 
   const authAttempt = request.nextUrl.searchParams.get("authAttempt");
 

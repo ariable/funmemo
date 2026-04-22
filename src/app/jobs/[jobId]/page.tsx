@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { AuthRequired } from "@/components/auth-required";
 import { getCurrentUser } from "@/lib/server/auth";
 import { getJobDetail } from "@/lib/server/jobs";
 
@@ -21,7 +22,7 @@ export default async function JobDetailPage({
   }
 
   if (!currentUser) {
-    notFound();
+    return <AuthRequired returnTo={`/jobs/${jobId}`} />;
   }
 
   const job = await getJobDetail(jobId, { userId: currentUser.id });

@@ -54,7 +54,6 @@ export function SettingsPageClient({ userDisplayName }: { userDisplayName: strin
             <div className="rounded-[24px] border border-white/70 bg-white/80 px-4 py-3 text-sm text-slate-600">
               <div className="flex flex-col items-end gap-3">
                 <UserBadge user={currentUser} />
-                <span>配置保存在 SQLite</span>
               </div>
             </div>
           </div>

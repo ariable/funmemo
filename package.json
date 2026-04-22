@@ -2,6 +2,7 @@
   "name": "funmemo",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build --webpack",
@@ -17,7 +18,7 @@
     "@prisma/adapter-libsql": "^7.6.0",
     "@prisma/client": "^7.5.0",
     "docx": "^9.6.1",
-    "next": "16.1.6",
+    "next": "16.2.4",
     "react": "19.2.3",
     "react-dom": "19.2.3"
   },
@@ -27,9 +28,12 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.1.6",
+    "eslint-config-next": "16.2.4",
     "prisma": "^7.5.0",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "overrides": {
+    "@hono/node-server": "1.19.14"
   }
 }

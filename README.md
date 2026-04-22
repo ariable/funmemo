@@ -69,7 +69,6 @@ npm start
 | `LLM_MODEL` | LLM 模型名称 | — |
 | `STORAGE_ROOT` | 文件存储目录 | `./storage` |
 | `DATABASE_URL` | 数据库连接地址 | `file:./dev.db` |
-| `APP_URL` | 应用外部访问地址 | `http://localhost:3000` |
 | `AUTH_SECRET` | 本地登录会话签名密钥 | — |
 | `AUTH_SESSION_MAX_AGE_SEC` | 本地会话有效期（秒） | `604800` |
 | `AUTH_CASDOOR_ISSUER` | Casdoor OIDC Issuer 地址 | — |
@@ -155,8 +154,21 @@ http://192.168.43.249:3210/api/auth/sign-in/casdoor?attempt=silent&silentSignin=
 
 按你给的配置，应用内直连 Casdoor 时：
 
-- 应用地址：`http://192.168.43.249:3210`
+- 应用地址：默认从你当前访问 FunMemo 的地址自动推断，例如 `http://192.168.43.249:3210`
 - Casdoor Issuer：`http://192.168.43.249:8910`
+
+这里不用再手动配置 `APP_URL`。你启动在哪个端口、并用哪个地址访问 FunMemo，系统就按这个地址去生成 Casdoor 回调地址。
+
+例如：
+
+- 你用 `http://192.168.43.249:3210` 访问 FunMemo
+  那回调地址就是 `http://192.168.43.249:3210/api/auth/callback/casdoor`
+- 你用 `http://192.168.43.249:3211` 访问 FunMemo
+  那回调地址就是 `http://192.168.43.249:3211/api/auth/callback/casdoor`
+- 你用 `http://localhost:3210` 访问 FunMemo
+  那回调地址就是 `http://localhost:3210/api/auth/callback/casdoor`
+
+所以你需要做的不是再配 `APP_URL`，而是把你**实际会拿来访问 FunMemo 的地址对应的回调地址**都加进 Casdoor。
 
 常见的 Casdoor 回调地址应填写：
 
@@ -279,6 +291,7 @@ npm run lint
 - 删除任务后上传日志仍然保留
 - 用户头解析
 - 本地会话 token 编解码
+- 基于当前请求自动推断外部访问地址
 - 静默登录与普通登录回退 URL 构造
 - 基于 `userId` 的任务隔离查询
 

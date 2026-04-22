@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { getAppUrl, getCasdoorDiscovery } from "@/lib/server/casdoor";
+import { getCasdoorDiscovery, resolveAppUrl } from "@/lib/server/casdoor";
 import { SESSION_COOKIE_NAME } from "@/lib/server/session";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const returnTo = url.searchParams.get("returnTo") || "/";
-  const redirectTo = new URL(returnTo, getAppUrl());
+  const redirectTo = new URL(returnTo, resolveAppUrl({ requestUrl: request.url, headers: request.headers }));
   const response = NextResponse.redirect(redirectTo);
   response.cookies.delete(SESSION_COOKIE_NAME);
 

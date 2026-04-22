@@ -12,6 +12,10 @@ export interface CasdoorUserInfo {
   email?: string;
 }
 
+type HeaderReader = {
+  get(name: string): string | null;
+};
+
 function getRequiredEnv(name: string) {
   const value = process.env[name]?.trim();
   if (!value) {
@@ -21,12 +25,34 @@ function getRequiredEnv(name: string) {
   return value;
 }
 
-export function getAppUrl() {
-  return getRequiredEnv("APP_URL").replace(/\/$/, "");
+export function resolveAppUrl(input?: { requestUrl?: string | URL; headers?: HeaderReader }) {
+  const requestUrl = input?.requestUrl;
+  if (requestUrl) {
+    return new URL(requestUrl.toString()).origin;
+  }
+
+  const forwardedProto = input?.headers?.get("x-forwarded-proto")?.trim();
+  const forwardedHost = input?.headers?.get("x-forwarded-host")?.trim();
+  if (forwardedProto && forwardedHost) {
+    return `${forwardedProto}://${forwardedHost}`;
+  }
+
+  const host = input?.headers?.get("host")?.trim();
+  if (host) {
+    const proto = process.env.NODE_ENV === "production" ? "https" : "http";
+    return `${proto}://${host}`;
+  }
+
+  const appUrl = process.env.APP_URL?.trim();
+  if (appUrl) {
+    return appUrl.replace(/\/$/, "");
+  }
+
+  throw new Error("无法推断应用访问地址，请设置 APP_URL 或提供请求 URL");
 }
 
-export function getCasdoorCallbackUrl() {
-  return `${getAppUrl()}/api/auth/callback/casdoor`;
+export function getCasdoorCallbackUrl(input?: { requestUrl?: string | URL; headers?: HeaderReader }) {
+  return `${resolveAppUrl(input)}/api/auth/callback/casdoor`;
 }
 
 export function getCasdoorConfig() {
@@ -51,7 +77,7 @@ export async function getCasdoorDiscovery() {
   return (await response.json()) as CasdoorDiscoveryDocument;
 }
 
-export async function exchangeCodeForAccessToken(code: string) {
+export async function exchangeCodeForAccessToken(code: string, input?: { requestUrl?: string | URL; headers?: HeaderReader }) {
   const discovery = await getCasdoorDiscovery();
   const { clientId, clientSecret } = getCasdoorConfig();
 
@@ -65,7 +91,7 @@ export async function exchangeCodeForAccessToken(code: string) {
       code,
       client_id: clientId,
       client_secret: clientSecret,
-      redirect_uri: getCasdoorCallbackUrl(),
+      redirect_uri: getCasdoorCallbackUrl(input),
     }),
   });
 

@@ -4,7 +4,7 @@ import { uploadJobAction } from "@/app/actions";
 import { useRouter } from "next/navigation";
 import { useActionState, useCallback, useEffect, useRef, useState } from "react";
 
-export function UploadForm() {
+export function UploadForm({ preview = false }: { preview?: boolean }) {
   const router = useRouter();
   const [state, formAction, isPending] = useActionState(uploadJobAction, undefined);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -56,24 +56,33 @@ export function UploadForm() {
       <p className="mt-1 text-sm text-slate-500">
         上传会议录音，自动完成转录、发言人识别与纪要生成
       </p>
+      {preview ? (
+        <p className="mt-3 rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800">
+          登录后可上传录音并开始处理。
+        </p>
+      ) : null}
 
       <div className="mt-6">
         <div
           role="button"
-          tabIndex={0}
-          onClick={() => fileInputRef.current?.click()}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") fileInputRef.current?.click();
+          tabIndex={preview ? -1 : 0}
+          onClick={() => {
+            if (!preview) fileInputRef.current?.click();
           }}
-          onDrop={handleDrop}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          className={`flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-4 py-10 text-center transition ${
+          onKeyDown={(e) => {
+            if (!preview && (e.key === "Enter" || e.key === " ")) fileInputRef.current?.click();
+          }}
+          onDrop={preview ? undefined : handleDrop}
+          onDragOver={preview ? undefined : handleDragOver}
+          onDragLeave={preview ? undefined : handleDragLeave}
+          className={`flex flex-col items-center justify-center rounded-2xl border-2 border-dashed px-4 py-10 text-center transition ${
             dragging
               ? "border-cyan-400 bg-cyan-50/50"
               : fileName
                 ? "border-cyan-300 bg-cyan-50/30"
-                : "border-slate-300 bg-slate-50 hover:border-cyan-300 hover:bg-cyan-50/30"
+                : preview
+                  ? "border-slate-300 bg-slate-50/80"
+                  : "cursor-pointer border-slate-300 bg-slate-50 hover:border-cyan-300 hover:bg-cyan-50/30"
           }`}
         >
           <div className={`flex h-12 w-12 items-center justify-center rounded-full ${fileName ? "bg-cyan-100" : "bg-slate-100"}`}>
@@ -104,11 +113,12 @@ export function UploadForm() {
           )}
           <input
             ref={fileInputRef}
-            required
+            required={!preview}
             name="file"
             type="file"
             accept=".mp3,.wav,.m4a,.mp4,.aac,.flac,.webm"
             className="hidden"
+            disabled={preview}
             onChange={(e) => handleFile(e.target.files?.[0] ?? null)}
           />
         </div>
@@ -120,6 +130,7 @@ export function UploadForm() {
           <input
             name="title"
             placeholder="例如：产品周会 - 2026-03-15"
+            disabled={preview}
             className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-cyan-300 focus:bg-white"
           />
         </label>
@@ -129,6 +140,7 @@ export function UploadForm() {
           <input
             name="meetingAt"
             type="datetime-local"
+            disabled={preview}
             className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-cyan-300 focus:bg-white"
           />
         </label>
@@ -138,6 +150,7 @@ export function UploadForm() {
           <input
             name="meetingLocation"
             placeholder="例如：上海 · 8F 大会议室"
+            disabled={preview}
             className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-cyan-300 focus:bg-white"
           />
         </label>
@@ -146,14 +159,14 @@ export function UploadForm() {
       <div className="mt-6 flex items-center gap-4">
         <button
           type="submit"
-          disabled={isPending}
+          disabled={preview || isPending}
           className="soft-ring inline-flex items-center justify-center rounded-full bg-slate-950 px-6 py-3 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isPending ? "处理中..." : "上传并开始转录"}
+          {preview ? "登录后开始转录" : isPending ? "处理中..." : "上传并开始转录"}
         </button>
         {isPending ? (
           <p className="text-sm font-medium text-amber-700">
-            正在进行转录，请几分钟后刷新页面从下方记录进入。
+            正在处理音频，请几分钟后在下方任务列表查看进度。
           </p>
         ) : null}
         {state?.error ? (

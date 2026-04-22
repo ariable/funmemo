@@ -1,8 +1,11 @@
 import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const rootDir = fileURLToPath(new URL(".", import.meta.url));
 
 const nextConfig = {
   turbopack: {
-    root: path.join(__dirname),
+    root: path.join(rootDir),
   },
   experimental: {
     serverActions: {

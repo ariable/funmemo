@@ -36,7 +36,7 @@ function JobSkeleton() {
   );
 }
 
-export function RecentJobs() {
+export function RecentJobs({ preview = false }: { preview?: boolean }) {
   const [jobs, setJobs] = useState<JobCard[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -44,6 +44,11 @@ export function RecentJobs() {
   const [deletingJobId, setDeletingJobId] = useState<string | null>(null);
 
   useEffect(() => {
+    if (preview) {
+      setLoading(false);
+      return;
+    }
+
     const run = async () => {
       const response = await fetch("/api/jobs-list", { cache: "no-store" });
       const result = (await response.json()) as
@@ -61,7 +66,18 @@ export function RecentJobs() {
     };
 
     void run();
-  }, []);
+  }, [preview]);
+
+  if (preview) {
+    return (
+      <div className="space-y-4">
+        <div className="rounded-[24px] border border-amber-200 bg-amber-50/70 p-6 text-sm leading-7 text-amber-800">
+          登录后可查看历史任务、处理进度和导出结果。
+        </div>
+        <JobSkeleton />
+      </div>
+    );
+  }
 
   if (loading) {
     return (

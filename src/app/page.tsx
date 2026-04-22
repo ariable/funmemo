@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { connection } from "next/server";
-import { AuthRequired } from "@/components/auth-required";
+import { LoginRedirectBanner } from "@/components/login-redirect-banner";
 import { RecentJobs } from "@/components/recent-jobs";
 import { UploadForm } from "@/components/upload-form";
 import { UserBadge } from "@/components/user-badge";
@@ -12,10 +12,7 @@ export const dynamic = "force-dynamic";
 export default async function Home() {
   await connection();
   const currentUser = await getCurrentUser();
-
-  if (!currentUser) {
-    return <AuthRequired />;
-  }
+  const loginUrl = process.env.AUTH_LOGIN_URL || "/api/auth/sign-in/casdoor?attempt=interactive&returnTo=/";
 
   return (
     <main className="min-h-screen px-4 py-6 text-slate-900 md:px-8 lg:px-10">
@@ -33,23 +30,29 @@ export default async function Home() {
               惟觉智能会议助手
             </p>
           </div>
-          <Link
-            href="/settings"
-            className="rounded-full border-2 border-slate-300 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 transition hover:border-cyan-300 hover:text-cyan-700"
-          >
-            设置
-          </Link>
-          <UserBadge user={currentUser} />
+          {currentUser ? (
+            <>
+              <Link
+                href="/settings"
+                className="rounded-full border-2 border-slate-300 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 transition hover:border-cyan-300 hover:text-cyan-700"
+              >
+                设置
+              </Link>
+              <UserBadge user={currentUser} />
+            </>
+          ) : (
+            <LoginRedirectBanner loginUrl={loginUrl} />
+          )}
         </header>
 
         <section className="glass-panel rounded-[28px] p-6 md:p-8">
-          <UploadForm />
+          <UploadForm preview={!currentUser} />
         </section>
 
         <section id="recent-jobs" className="glass-panel rounded-[28px] p-6">
           <p className="section-title">历史任务</p>
           <div className="mt-4 space-y-4">
-            <RecentJobs />
+            <RecentJobs preview={!currentUser} />
           </div>
         </section>
       </div>

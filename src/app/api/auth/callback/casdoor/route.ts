@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { clearAuthAttempt } from "@/lib/server/auth-redirect";
-import { exchangeCodeForAccessToken, fetchCasdoorUserInfo, getAppUrl } from "@/lib/server/casdoor";
+import { exchangeCodeForAccessToken, fetchCasdoorUserInfo, resolveAppUrl } from "@/lib/server/casdoor";
 import {
   AUTH_FLOW_COOKIE_NAME,
   createSessionToken,
@@ -16,8 +16,8 @@ type AuthFlowPayload = {
   exp: number;
 };
 
-function buildSafeReturnTo(returnTo: string) {
-  const appUrl = new URL(getAppUrl());
+function buildSafeReturnTo(returnTo: string, request: Request) {
+  const appUrl = new URL(resolveAppUrl({ requestUrl: request.url, headers: request.headers }));
   const target = new URL(returnTo, appUrl);
 
   if (target.origin !== appUrl.origin) {
@@ -35,7 +35,7 @@ export async function GET(request: Request) {
   const flowToken = parseCookieValue(request.headers.get("cookie"), AUTH_FLOW_COOKIE_NAME);
   const flow = flowToken ? verifySignedToken<AuthFlowPayload>(flowToken) : null;
 
-  const fallbackReturnTo = buildSafeReturnTo(flow?.returnTo || "/");
+  const fallbackReturnTo = buildSafeReturnTo(flow?.returnTo || "/", request);
 
   if (!flow || flow.exp * 1000 <= Date.now() || !state || flow.state !== state || error || !code) {
     const response = NextResponse.redirect(fallbackReturnTo);
@@ -44,7 +44,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const accessToken = await exchangeCodeForAccessToken(code);
+    const accessToken = await exchangeCodeForAccessToken(code, { requestUrl: request.url, headers: request.headers });
     const user = await fetchCasdoorUserInfo(accessToken);
     const sessionToken = createSessionToken({
       id: user.sub,
@@ -52,7 +52,7 @@ export async function GET(request: Request) {
       loginName: user.preferred_username || user.email,
     });
 
-    const response = NextResponse.redirect(buildSafeReturnTo(flow.returnTo));
+    const response = NextResponse.redirect(buildSafeReturnTo(flow.returnTo, request));
     response.cookies.set(SESSION_COOKIE_NAME, sessionToken, {
       httpOnly: true,
       sameSite: "lax",

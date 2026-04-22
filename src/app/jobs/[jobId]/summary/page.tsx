@@ -13,7 +13,7 @@ export default async function JobSummaryPage({
   const currentUser = await getCurrentUser();
 
   if (!currentUser) {
-    return <AuthRequired />;
+    return <AuthRequired returnTo={`/jobs/${jobId}/summary`} />;
   }
 
   return <JobFlowClient jobId={jobId} step="summary" userDisplayName={currentUser.displayName} />;

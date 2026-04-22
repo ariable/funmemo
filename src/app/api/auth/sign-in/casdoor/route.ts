@@ -20,7 +20,7 @@ export async function GET(request: Request) {
   const authorizeUrl = new URL(discovery.authorization_endpoint);
   authorizeUrl.searchParams.set("client_id", clientId);
   authorizeUrl.searchParams.set("response_type", "code");
-  authorizeUrl.searchParams.set("redirect_uri", getCasdoorCallbackUrl());
+  authorizeUrl.searchParams.set("redirect_uri", getCasdoorCallbackUrl({ requestUrl: request.url, headers: request.headers }));
   authorizeUrl.searchParams.set("scope", scope);
   authorizeUrl.searchParams.set("state", state);
 

@@ -13,7 +13,7 @@ export default async function JobAnnotationPage({
   const currentUser = await getCurrentUser();
 
   if (!currentUser) {
-    return <AuthRequired />;
+    return <AuthRequired returnTo={`/jobs/${jobId}/annotation`} />;
   }
 
   return <JobFlowClient jobId={jobId} step="annotation" userDisplayName={currentUser.displayName} />;

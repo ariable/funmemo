@@ -157,7 +157,7 @@ function TranscriptSection({
       <section className="glass-panel rounded-[28px] p-5 md:p-6">
         <p className="section-title">Transcript</p>
         <div className="mt-6 rounded-[24px] border border-dashed border-slate-300 bg-white/70 p-8 text-center text-sm text-slate-500">
-          transcript 暂不可用。
+          转录服务暂不可用。
         </div>
       </section>
     );
@@ -792,7 +792,7 @@ export function JobDetailClient({
                   </svg>
                 </div>
                 <p className="mt-4 text-sm font-medium text-rose-700">转录失败</p>
-                <p className="mt-1 text-xs text-slate-400">请返回工作台重新上传，或联系管理员检查日志</p>
+                <p className="mt-1 text-xs text-slate-400">请返回工作台重试；如多次失败，请联系支持人员。</p>
               </section>
             )}
 
@@ -942,7 +942,7 @@ export function JobDetailClient({
             {(generating || activeJob.status === "summarizing") && (
               <div className="mt-4 flex items-center gap-2 rounded-2xl bg-cyan-50 px-4 py-3 text-sm text-cyan-700">
                 <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-cyan-600 border-t-transparent" />
-                请在几分钟后手动刷新页面查看纪要内容。
+                纪要生成中，如页面未更新，请手动刷新查看结果。
               </div>
             )}
 

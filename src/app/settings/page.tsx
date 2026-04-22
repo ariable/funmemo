@@ -10,7 +10,7 @@ export default async function SettingsPage() {
   const currentUser = await getCurrentUser();
 
   if (!currentUser) {
-    return <AuthRequired />;
+    return <AuthRequired returnTo="/settings" />;
   }
 
   return <SettingsPageClient userDisplayName={currentUser.displayName} />;
