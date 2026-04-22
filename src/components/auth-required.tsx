@@ -1,9 +1,16 @@
 import Image from "next/image";
+import { getAuthBannerState } from "@/lib/auth-login";
 import { LoginRedirectBanner } from "@/components/login-redirect-banner";
+import type { AuthAttempt } from "@/lib/server/auth-redirect";
 
-export function AuthRequired({ returnTo = "/" }: { returnTo?: string }) {
-  const loginUrl =
-    process.env.AUTH_LOGIN_URL || `/api/auth/sign-in/casdoor?attempt=interactive&returnTo=${encodeURIComponent(returnTo)}`;
+export function AuthRequired({
+  authAttempt,
+  returnTo = "/",
+}: {
+  authAttempt?: AuthAttempt | null;
+  returnTo?: string;
+}) {
+  const banner = getAuthBannerState({ returnTo, authAttempt: authAttempt ?? null });
 
   return (
     <main className="min-h-screen px-4 py-6 text-slate-900 md:px-8 lg:px-10">
@@ -21,7 +28,14 @@ export function AuthRequired({ returnTo = "/" }: { returnTo?: string }) {
               惟觉智能会议助手
             </p>
           </div>
-          <LoginRedirectBanner loginUrl={loginUrl} />
+          <LoginRedirectBanner
+            actionLabel={banner.actionLabel}
+            actionUrl={banner.actionUrl}
+            autoRedirectUrl={banner.autoRedirectUrl}
+            delayMs={banner.delayMs}
+            message={banner.message}
+            title={banner.title}
+          />
         </header>
       </div>
     </main>

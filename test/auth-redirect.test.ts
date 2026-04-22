@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildLoginRedirectUrl, clearAuthAttempt, withAuthAttempt } from "../src/lib/server/auth-redirect.ts";
+import { buildLoginRedirectHref, buildLoginRedirectUrl, clearAuthAttempt, withAuthAttempt } from "../src/lib/server/auth-redirect.ts";
 
 test("withAuthAttempt appends the auth attempt marker", () => {
   const url = withAuthAttempt(new URL("http://192.168.43.249:3210/jobs/123?foo=bar"), "silent");
@@ -39,5 +39,18 @@ test("interactive fallback removes silentSignin and marks returnTo", () => {
   assert.equal(
     loginUrl.searchParams.get("returnTo"),
     "http://192.168.43.249:3210/settings?authAttempt=interactive",
+  );
+});
+
+test("relative login redirect href keeps relative returnTo", () => {
+  const loginHref = buildLoginRedirectHref({
+    currentPath: "/settings",
+    loginUrl: "/api/auth/sign-in/casdoor",
+    attempt: "silent",
+  });
+
+  assert.equal(
+    loginHref,
+    "/api/auth/sign-in/casdoor?returnTo=%2Fsettings%3FauthAttempt%3Dsilent&attempt=silent&silentSignin=1",
   );
 });

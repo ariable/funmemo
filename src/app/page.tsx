@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { connection } from "next/server";
+import { getAuthBannerState, parseAuthAttempt } from "@/lib/auth-login";
 import { LoginRedirectBanner } from "@/components/login-redirect-banner";
 import { RecentJobs } from "@/components/recent-jobs";
 import { UploadForm } from "@/components/upload-form";
@@ -9,10 +10,16 @@ import { getCurrentUser } from "@/lib/server/auth";
 
 export const dynamic = "force-dynamic";
 
-export default async function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
   await connection();
   const currentUser = await getCurrentUser();
-  const loginUrl = process.env.AUTH_LOGIN_URL || "/api/auth/sign-in/casdoor?attempt=interactive&returnTo=/";
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const authAttempt = parseAuthAttempt(resolvedSearchParams?.authAttempt);
+  const banner = getAuthBannerState({ returnTo: "/", authAttempt });
 
   return (
     <main className="min-h-screen px-4 py-6 text-slate-900 md:px-8 lg:px-10">
@@ -41,7 +48,14 @@ export default async function Home() {
               <UserBadge user={currentUser} />
             </>
           ) : (
-            <LoginRedirectBanner loginUrl={loginUrl} />
+            <LoginRedirectBanner
+              actionLabel={banner.actionLabel}
+              actionUrl={banner.actionUrl}
+              autoRedirectUrl={banner.autoRedirectUrl}
+              delayMs={banner.delayMs}
+              message={banner.message}
+              title={banner.title}
+            />
           )}
         </header>
 

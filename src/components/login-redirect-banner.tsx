@@ -3,30 +3,42 @@
 import { useEffect } from "react";
 
 export function LoginRedirectBanner({
-  loginUrl,
-  delayMs = 2000,
+  actionLabel = "立即登录",
+  actionUrl,
+  autoRedirectUrl,
+  delayMs,
+  message,
+  title = "未登录",
 }: {
-  loginUrl: string;
+  actionLabel?: string;
+  actionUrl: string;
+  autoRedirectUrl?: string;
   delayMs?: number;
+  message: string;
+  title?: string;
 }) {
   useEffect(() => {
+    if (!autoRedirectUrl || delayMs === undefined) {
+      return;
+    }
+
     const timer = window.setTimeout(() => {
-      window.location.assign(loginUrl);
+      window.location.assign(autoRedirectUrl);
     }, delayMs);
 
     return () => window.clearTimeout(timer);
-  }, [delayMs, loginUrl]);
+  }, [autoRedirectUrl, delayMs]);
 
   return (
     <div className="rounded-[24px] border border-amber-200 bg-white/95 px-4 py-3 text-sm text-slate-700 shadow-[0_16px_40px_rgba(15,23,42,0.08)]">
       <div className="flex flex-wrap items-center gap-3">
-        <span className="font-medium text-slate-900">未登录</span>
-        <span className="text-slate-500">2 秒后自动跳转登录</span>
+        <span className="font-medium text-slate-900">{title}</span>
+        <span className="text-slate-500">{message}</span>
         <a
-          href={loginUrl}
+          href={actionUrl}
           className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1.5 text-xs font-medium text-cyan-700 transition hover:border-cyan-300 hover:bg-cyan-100"
         >
-          立即登录
+          {actionLabel}
         </a>
       </div>
     </div>

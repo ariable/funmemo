@@ -16,7 +16,11 @@ type AuthFlowPayload = {
   exp: number;
 };
 
-function buildSafeReturnTo(returnTo: string, request: Request) {
+function buildSafeReturnTo(
+  returnTo: string,
+  request: Request,
+  { clearAttempt = true }: { clearAttempt?: boolean } = {},
+) {
   const appUrl = new URL(resolveAppUrl({ requestUrl: request.url, headers: request.headers }));
   const target = new URL(returnTo, appUrl);
 
@@ -24,7 +28,7 @@ function buildSafeReturnTo(returnTo: string, request: Request) {
     return appUrl;
   }
 
-  return clearAuthAttempt(target);
+  return clearAttempt ? clearAuthAttempt(target) : target;
 }
 
 export async function GET(request: Request) {
@@ -35,7 +39,9 @@ export async function GET(request: Request) {
   const flowToken = parseCookieValue(request.headers.get("cookie"), AUTH_FLOW_COOKIE_NAME);
   const flow = flowToken ? verifySignedToken<AuthFlowPayload>(flowToken) : null;
 
-  const fallbackReturnTo = buildSafeReturnTo(flow?.returnTo || "/", request);
+  const fallbackReturnTo = buildSafeReturnTo(flow?.returnTo || "/", request, {
+    clearAttempt: !flow?.attempt,
+  });
 
   if (!flow || flow.exp * 1000 <= Date.now() || !state || flow.state !== state || error || !code) {
     const response = NextResponse.redirect(fallbackReturnTo);
