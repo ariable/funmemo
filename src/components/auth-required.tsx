@@ -1,16 +1,19 @@
 import Image from "next/image";
-import { getAuthBannerState } from "@/lib/auth-login";
+import { cookies } from "next/headers";
+import { getAuthBannerState, SKIP_SILENT_LOGIN_COOKIE_NAME } from "@/lib/auth-login";
 import { LoginRedirectBanner } from "@/components/login-redirect-banner";
 import type { AuthAttempt } from "@/lib/server/auth-redirect";
 
-export function AuthRequired({
+export async function AuthRequired({
   authAttempt,
   returnTo = "/",
 }: {
   authAttempt?: AuthAttempt | null;
   returnTo?: string;
 }) {
-  const banner = getAuthBannerState({ returnTo, authAttempt: authAttempt ?? null });
+  const cookieStore = await cookies();
+  const skipSilent = cookieStore.get(SKIP_SILENT_LOGIN_COOKIE_NAME)?.value === "1";
+  const banner = getAuthBannerState({ returnTo, authAttempt: authAttempt ?? null, skipSilent });
 
   return (
     <main className="min-h-screen px-4 py-6 text-slate-900 md:px-8 lg:px-10">

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { SKIP_SILENT_LOGIN_COOKIE_NAME } from "@/lib/auth-login";
 import { clearAuthAttempt } from "@/lib/server/auth-redirect";
 import { exchangeCodeForAccessToken, fetchCasdoorUserInfo, resolveAppUrl } from "@/lib/server/casdoor";
 import {
@@ -67,6 +68,7 @@ export async function GET(request: Request) {
       maxAge: Number(process.env.AUTH_SESSION_MAX_AGE_SEC ?? 60 * 60 * 24 * 7),
     });
     response.cookies.delete(AUTH_FLOW_COOKIE_NAME);
+    response.cookies.delete(SKIP_SILENT_LOGIN_COOKIE_NAME);
     return response;
   } catch {
     const response = NextResponse.redirect(fallbackReturnTo);

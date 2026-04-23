@@ -1,4 +1,7 @@
-import { buildLoginRedirectHref, type AuthAttempt } from "@/lib/server/auth-redirect";
+import { buildLoginRedirectHref, type AuthAttempt } from "./server/auth-redirect.ts";
+
+export const SKIP_SILENT_LOGIN_COOKIE_NAME = "funmemo_skip_silent_login";
+export const SKIP_SILENT_LOGIN_MAX_AGE_SEC = 60 * 5;
 
 export type AuthBannerState = {
   actionUrl: string;
@@ -21,6 +24,7 @@ export function parseAuthAttempt(value: string | string[] | undefined): AuthAtte
 export function getAuthBannerState(input: {
   authAttempt: AuthAttempt | null;
   returnTo: string;
+  skipSilent?: boolean;
 }): AuthBannerState {
   const loginUrl = getLoginBaseUrl();
   const silentUrl = buildLoginRedirectHref({
@@ -33,6 +37,15 @@ export function getAuthBannerState(input: {
     loginUrl,
     attempt: "interactive",
   });
+
+  if (input.skipSilent) {
+    return {
+      title: "已退出",
+      message: "你已退出登录，请重新登录。",
+      actionUrl: interactiveUrl,
+      actionLabel: "重新登录",
+    };
+  }
 
   if (input.authAttempt === "silent") {
     return {

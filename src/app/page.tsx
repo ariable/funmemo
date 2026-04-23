@@ -1,7 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { connection } from "next/server";
-import { getAuthBannerState, parseAuthAttempt } from "@/lib/auth-login";
+import { getAuthBannerState, parseAuthAttempt, SKIP_SILENT_LOGIN_COOKIE_NAME } from "@/lib/auth-login";
 import { LoginRedirectBanner } from "@/components/login-redirect-banner";
 import { RecentJobs } from "@/components/recent-jobs";
 import { UploadForm } from "@/components/upload-form";
@@ -17,9 +18,11 @@ export default async function Home({
 }) {
   await connection();
   const currentUser = await getCurrentUser();
+  const cookieStore = await cookies();
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const authAttempt = parseAuthAttempt(resolvedSearchParams?.authAttempt);
-  const banner = getAuthBannerState({ returnTo: "/", authAttempt });
+  const skipSilent = cookieStore.get(SKIP_SILENT_LOGIN_COOKIE_NAME)?.value === "1";
+  const banner = getAuthBannerState({ returnTo: "/", authAttempt, skipSilent });
 
   return (
     <main className="min-h-screen px-4 py-6 text-slate-900 md:px-8 lg:px-10">
